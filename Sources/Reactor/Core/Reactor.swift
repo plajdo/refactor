@@ -236,7 +236,7 @@ public extension Reactor {
 
 public extension Reactor {
 
-    typealias Event = GoodReactor.Event<Action, Mutation, Destination>
+    typealias Event = Reactor::Event<Action, Mutation, Destination>
 
     static var logger: (any ReactorLogger)? {
         MapTables.loggers.forceCastedValue(forKey: self, default: makeLogger())

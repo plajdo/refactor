@@ -5,7 +5,7 @@
 //  Created by Filip Šašala on 30/08/2024.
 //
 
-import GoodReactor
+import Reactor
 import Observation
 
 final class EmptyObject {}
@@ -29,7 +29,7 @@ final class EmptyObject {}
         }
     }
 
-    typealias Event = GoodReactor.Event<Action, Mutation, Destination>
+    typealias Event = Reactor::Event<Action, Mutation, Destination>
 
     // MARK: Enums
 

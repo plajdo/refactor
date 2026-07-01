@@ -1,30 +1,30 @@
 //
-//  AnyReactorTests.swift
+//  GoodReactorTests.swift
 //  GoodReactor
 //
-//  Created by Filip Šašala on 01/10/2025.
+//  Created by Filip Šašala on 23/08/2024.
 //
 
 import XCTest
-@testable import GoodReactor
+@testable import Reactor
 
 import Combine
 import SwiftUI
 
 @available(iOS 17.0, macOS 14.0, *)
-final class AnyReactorTests: XCTestCase {
+final class GoodReactorTests: XCTestCase {
 
     @MainActor func testSendAction() {
-        let model = AnyReactor(ObservableModel())
+        let model = ObservableModel()
 
         model.send(action: .addOne)
 
         XCTAssertEqual(model.initialState.counter, 9, "Initial state mutated")
-        XCTAssertEqual(model.counter, 10, "Sending action failed")
+        XCTAssertEqual(model.state.counter, 10, "Sending action failed")
     }
 
     @MainActor func testInitialState() {
-        let model = AnyReactor(ObservableModel())
+        let model = ObservableModel()
 
         XCTAssertEqual(model.initialState.counter, 9, "Invalid initial state")
         XCTAssertEqual(model.counter, 9, "Invalid initial state")
@@ -34,7 +34,7 @@ final class AnyReactorTests: XCTestCase {
     }
 
     @MainActor func testActionMutation() async throws {
-        let model = AnyReactor(ObservableModel())
+        let model = ObservableModel()
 
         XCTAssertEqual(model.counter, 9)
 
@@ -52,24 +52,24 @@ final class AnyReactorTests: XCTestCase {
         XCTAssertEqual(model.counter, 0, "State did not mutate properly")
     }
 
-//    @MainActor func testLegacyModel() {
-//        let model = AnyReactor(LegacyModel())
-//
-//        let expectation = XCTestExpectation(description: "Change notification was sent")
-//
-//        let cancellable = model.objectWillChange.sink {
-//            expectation.fulfill()
-//        }
-//
-//        model.send(action: .addOne)
-//
-//        XCTAssertEqual(model.counter, 10)
-//        wait(for: [expectation], timeout: 3)
-//        withExtendedLifetime(cancellable, {})
-//    }
+    @MainActor func testLegacyModel() {
+        let model = LegacyModel()
+
+        let expectation = XCTestExpectation(description: "Change notification was sent")
+
+        let cancellable = model.objectWillChange.sink {
+            expectation.fulfill()
+        }
+
+        model.send(action: .addOne)
+
+        XCTAssertEqual(model.counter, 10)
+        wait(for: [expectation], timeout: 3)
+        withExtendedLifetime(cancellable, {})
+    }
 
     @MainActor func testMultipleRuns() {
-        let model = AnyReactor(ObservableModel())
+        let model = ObservableModel()
         let expectation = XCTestExpectation(description: "5 concurrent runs finished at the same time")
         XCTAssertEqual(model.counter, 9)
 
@@ -83,7 +83,7 @@ final class AnyReactorTests: XCTestCase {
     }
 
     @MainActor func testHundredRunsInForLoop() {
-        let model = AnyReactor(ObservableModel())
+        let model = ObservableModel()
         let expectation = XCTestExpectation(description: "100 concurrent runs finished at the same time")
         XCTAssertEqual(model.counter, 9)
 
@@ -95,10 +95,10 @@ final class AnyReactorTests: XCTestCase {
         wait(for: [expectation], timeout: 1.5)
         XCTAssertEqual(model.counter, 109)
     }
-
+    
     /// Test 200 tasks running under one event, but added while the first ones were running, as mutations
     @MainActor func testTwiceHundredRuns() {
-        let model = AnyReactor(ObservableModel())
+        let model = ObservableModel()
         let expectation = XCTestExpectation(description: "100+100 concurrent runs finished at the same time")
         XCTAssertEqual(model.counter, 9)
 
@@ -112,7 +112,7 @@ final class AnyReactorTests: XCTestCase {
     }
 
     @MainActor func testDebounce() async {
-        let model = AnyReactor(ObservableModel())
+        let model = ObservableModel()
 
         XCTAssertEqual(model.counter, 9)
 
@@ -129,27 +129,24 @@ final class AnyReactorTests: XCTestCase {
     }
 
     @MainActor func testBinding() {
-        let model = AnyReactor(ObservableModel())
+        let model = ObservableModel()
 
         XCTAssertEqual(model.counter, 9)
 
         let binding = model.bind(\.counter, action: { .setCounter($0) })
 
-        XCTAssertEqual(model.counter, 9)
-        XCTAssertEqual(model.counter, binding.wrappedValue)
+        XCTAssertEqual(binding.wrappedValue, 9)
         binding.wrappedValue += 12
-        XCTAssertEqual(model.counter, 21)
         XCTAssertEqual(binding.wrappedValue, 21)
-        XCTAssertEqual(model.counter, binding.wrappedValue)
     }
 
     @MainActor func testReactorStartIdempontency() async {
-        let model = AnyReactor(ObservableModel())
+        let model = ObservableModel()
 
         XCTAssertEqual(model.manualEventsCount, 0)
 
         model.start()
-
+        
         try? await Task.sleep(for: .milliseconds(100)) // subscriptions start asynchronously
         await ManualEventPublisher.shared.eventPublisher.send(1)
         try? await Task.sleep(for: .milliseconds(100)) // events are sent asynchronously

@@ -5,7 +5,7 @@
 //  Created by Filip Šašala on 30/08/2024.
 //
 
-import GoodReactor
+import Reactor
 import SwiftUI
 
 // MARK: - Example - Counter model using ObservableObject API
@@ -20,7 +20,7 @@ final class LegacyModel: Reactor, ObservableObject {
         }
     }
 
-    typealias Event = GoodReactor.Event<Action, Mutation, Destination>
+    typealias Event = Reactor::Event<Action, Mutation, Destination>
 
     // MARK: Enums
 

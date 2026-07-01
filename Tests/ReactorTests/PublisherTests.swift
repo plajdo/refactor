@@ -6,7 +6,7 @@
 //
 
 import XCTest
-@testable import GoodReactor
+@testable import Reactor
 
 final class PublisherTests: XCTestCase {
 

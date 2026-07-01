@@ -6,11 +6,11 @@
 //
 
 import Foundation
-import GoodReactor
+import Reactor
 
 final class ManualEventPublisher: @unchecked Sendable {
 
     @MainActor static let shared = ManualEventPublisher()
-    let eventPublisher = GoodReactor.PassthroughPublisher<Int>()
+    let eventPublisher = Reactor::PassthroughPublisher<Int>()
 
 }
