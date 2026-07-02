@@ -1,6 +1,6 @@
 //
 //  AnyTask.swift
-//  GoodReactor
+//  refactor
 //
 //  Created by Filip Šašala on 28/08/2024.
 //

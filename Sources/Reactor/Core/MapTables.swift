@@ -1,6 +1,6 @@
 //
 //  MapTables.swift
-//  GoodReactor
+//  refactor
 //
 //  Created by Filip Šašala on 27/08/2024.
 //

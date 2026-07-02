@@ -1,6 +1,6 @@
 //
-//  GoodReactorTests.swift
-//  GoodReactor
+//  ReactorTests.swift
+//  refactor
 //
 //  Created by Filip Šašala on 23/08/2024.
 //
@@ -12,7 +12,7 @@ import Combine
 import SwiftUI
 
 @available(iOS 17.0, macOS 14.0, *)
-final class GoodReactorTests: XCTestCase {
+final class ReactorTests: XCTestCase {
 
     @MainActor func testSendAction() {
         let model = ObservableModel()

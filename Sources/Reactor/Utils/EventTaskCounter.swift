@@ -1,6 +1,6 @@
 //
 //  EventTaskCounter.swift
-//  GoodReactor
+//  refactor
 //
 //  Created by Filip Šašala on 01/10/2025.
 //

@@ -1,5 +1,5 @@
 //
-//  GoodReactor.swift
+//  refactor.swift
 //
 //  Created by Dominik Pethö on 8/13/20.
 //  Copyright © 2020 GoodRequest. All rights reserved.

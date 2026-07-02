@@ -1,6 +1,6 @@
 //
 //  AnyReactor.swift
-//  GoodReactor
+//  refactor
 //
 //  Created by Filip Šašala on 24/09/2025.
 //

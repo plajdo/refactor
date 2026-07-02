@@ -1,6 +1,6 @@
 //
 //  ReactorLogger.swift
-//  GoodReactor
+//  refactor
 //
 //  Created by Matus Klasovity on 09/06/2025.
 //

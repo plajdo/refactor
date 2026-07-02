@@ -1,6 +1,6 @@
 //
 //  ViewModel.swift
-//  GoodReactor
+//  refactor
 //
 //  Created by Filip Šašala on 30/08/2024.
 //

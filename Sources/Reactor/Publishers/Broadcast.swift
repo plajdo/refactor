@@ -1,6 +1,6 @@
 //
 //  Broadcast.swift
-//  GoodReactor
+//  refactor
 //
 //  Created by Filip Šašala on 25/10/2024.
 //

@@ -1,6 +1,6 @@
 //
 //  ManualEventPublisher.swift
-//  GoodReactor
+//  refactor
 //
 //  Created by te075262 on 01/07/2026.
 //

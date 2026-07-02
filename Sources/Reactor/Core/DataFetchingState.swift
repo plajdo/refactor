@@ -1,6 +1,6 @@
 //
 //  DataFetchingState.swift
-//  GoodReactor
+//  refactor
 //
 //  Created by Filip Šašala on 21/10/2025.
 //

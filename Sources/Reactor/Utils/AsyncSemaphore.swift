@@ -1,6 +1,6 @@
 //
 //  AsyncSemaphore.swift
-//  GoodReactor
+//  refactor
 //
 //  Created by Filip Šašala on 26/08/2024.
 //
