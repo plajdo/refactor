@@ -1,18 +1,18 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.3
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
 
 let package = Package(
-    name: "GoodReactor",
+    name: "Reactor",
     platforms: [
         .iOS(.v13),
         .macOS(.v11)
     ],
     products: [
         .library(
-            name: "GoodReactor",
-            targets: ["GoodReactor"]
+            name: "Reactor",
+            targets: ["Reactor"]
         ),
         .library(
             name: "LegacyReactor",
@@ -26,12 +26,12 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "GoodReactor",
+            name: "Reactor",
             dependencies: [
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
                 .product(name: "Collections", package: "swift-collections")
             ],
-            path: "./Sources/GoodReactor",
+            path: "./Sources/Reactor",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
@@ -43,8 +43,8 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
-            name: "GoodReactorTests",
-            dependencies: ["GoodReactor"],
+            name: "ReactorTests",
+            dependencies: ["Reactor"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         )
     ]

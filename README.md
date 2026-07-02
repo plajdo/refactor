@@ -1,16 +1,5 @@
 ![Logo](good-reactor.png)
  
-# GoodReactor
-
-[Check out the Documentation](https://goodrequest.github.io/GoodReactor/documentation/goodreactor/)
-
-[![iOS Version](https://img.shields.io/badge/iOS_Version->=_13.0-brightgreen?logo=apple&logoColor=green)]() 
-[![Swift Version](https://img.shields.io/badge/Swift_Version-6.0-green?logo=swift)](https://docs.swift.org/swift-book/)
-[![Contains Test](https://img.shields.io/badge/Tests-83%25_coverage-blue)]()
-[![Dependency Manager](https://img.shields.io/badge/Dependency_Manager-SPM-red)](#swiftpackagemanager)
-
-TBD: updated description
-
 # Installation
 ## Swift Package Manager
 
@@ -23,14 +12,14 @@ import PackageDescription
 let package = Package(
     name: "SampleProject",
     dependencies: [
-        .package(url: "https://github.com/GoodRequest/GoodReactor" .upToNextMajor("2.3.0"))
+        .package(url: "https://github.com/plajdo/refactor" .upToNextMajor("2.3.0"))
     ]
 )
 
 ```
 
 # Usage
-## GoodReactor
+## Reactor
 ### ViewModel
 In your ViewModel define Actions, Mutations, Destinations and the State
 
@@ -72,7 +61,7 @@ func makeInitialState() -> State {
 Finally in the `reduce` function you define how `state` changes, according to certain `event`s:
 
 ```swift
-typealias Event = GoodReactor.Event<Action, Mutation, Destination>
+typealias Event = Reactor::Event<Action, Mutation, Destination>
 
 func reduce(state: inout State, event: Event) {
     switch event.kind {
@@ -205,4 +194,4 @@ You can easily mock state for Xcode Previews by using `Stub` reactor implementat
 ```
 
 # License
-GoodReactor repository is released under the MIT license. See [LICENSE](LICENSE.md) for details.
+Refactor repository is released under the MIT license. See [LICENSE](LICENSE.md) for details.
