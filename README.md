@@ -1,197 +1,245 @@
-![Logo](good-reactor.png)
- 
-# Installation
-## Swift Package Manager
+# Reactor
 
-Create a `Package.swift` file and add the package dependency into the dependencies list.
-Or to integrate without package.swift add it through the Xcode add package interface.
+Reactor is a lightweight Swift architecture for predictable view models. A view reads observable state and sends events; the reactor owns every state change and side effect.
+
+```text
+View -> Action -> reduce -> State
+Side effect or publisher -> Mutation -> reduce -> State
+View -> Destination -> navigation
+```
+
+## Requirements
+
+- Swift 6.3+
+- iOS 13+ or macOS 11+
+- iOS 17+ or macOS 14+ for the Observation-based SwiftUI APIs shown below
+
+## Installation
+
+Add the package and the `Reactor` product to your Swift target:
 
 ```swift
-import PackageDescription
+dependencies: [
+    .package(
+        url: "https://github.com/plajdo/refactor.git",
+        from: "3.0.0"
+    )
+]
+```
 
-let package = Package(
-    name: "SampleProject",
+```swift
+.target(
+    name: "MyApp",
     dependencies: [
-        .package(url: "https://github.com/plajdo/refactor" .upToNextMajor("2.3.0"))
+        .product(name: "Reactor", package: "refactor")
     ]
 )
-
 ```
 
-# Usage
-## Reactor
-### ViewModel
-In your ViewModel define Actions, Mutations, Destinations and the State
+## View model
 
-- State defines all data of a View (or a ViewController)
-- Action represents user actions that are sent from the View.
-- Mutation represents state changes from external sources.
-- Destination represents all possible destinations, where user can navigate.
+`State` is the complete UI snapshot and the single source of truth. Views send `Action` and `Destination` events; asynchronous results and external events return as `Mutation` values.
 
 ```swift
-@Observable final class ViewModel: Reactor {
-    enum Action {
-        case login(username: String, password: String)
+import Observation
+import Reactor
+
+@Observable final class ItemsViewModel: Reactor {
+
+    typealias Event = Reactor::Event<Action, Mutation, Destination>
+
+    // MARK: - Dependencies
+
+    @ObservationIgnored private let itemService = ItemService()
+
+    // MARK: - Properties
+
+    var destination: Destination?
+
+    // MARK: - Action
+
+    enum Action: Sendable {
+
+        case load
+
     }
 
-    enum Mutation {
-        case didReceiveAuthResponse(Credentials)
+    // MARK: - Mutation
+
+    enum Mutation: Sendable {
+
     }
 
-    enum Destination {
-        case homeScreen
-        case errorAlert
+    // MARK: - Destination
+
+    enum Destination: Sendable {
+
+        case detail(Item.ID)
+
     }
 
-    @Observable final class State {
-        var username: String
-        var password: String
-    }
-}
-```
+    // MARK: - State
 
-You can provide the initial state of the view in the `makeInitialState` function.
+    @MainActor @Observable final class State {
 
-```swift
-func makeInitialState() -> State {
-    return State()
-}
-```
+        var itemsFetchingState: DataFetchingState<[Item], ItemError> = .idle
 
-Finally in the `reduce` function you define how `state` changes, according to certain `event`s:
-
-```swift
-typealias Event = Reactor::Event<Action, Mutation, Destination>
-
-func reduce(state: inout State, event: Event) {
-    switch event.kind {
-    case .action(.login(...)):
-        // ...
-
-    case .mutation:
-        // ...
-
-    case .destination:
-        // ...
-    }
-}
-```
-
-You can run asynchronous tasks by using `run` and returning the result in form of a `Mutation`.
-
-```swift
-func reduce(state: inout State, event: Event) {
-    switch event.kind {
-    case .action(.login(let username, let password)):
-        run(event) {
-            let credentials = await networking.login(username, password)
-            return Mutation.didReceiveAuthResponse(credentials)
+        var items: [Item] {
+            return itemsFetchingState.successValue ?? []
         }
 
-    // ...
-
-    case .mutation(.didReceiveAuthResponse(let credentials)):
-        // proceed with login
     }
+
+    // MARK: - Lifecycle
+
+    func makeInitialState() -> State {
+        return State()
+    }
+
+    // MARK: - Reduce
+
+    func reduce(state: inout State, event: Event) {
+        switch event.kind {
+        case .action(.load):
+            fetch(event, \.itemsFetchingState) {
+                return try await itemService.fetchItems()
+            }
+
+        case .mutation, .destination:
+            break
+        }
+    }
+
 }
 ```
 
-You can listen to external changes by `subscribe`-ing to event `Publisher`-s.
-You start the subscriptions by calling the `start()` function.
+Keep event payloads `Sendable`. Apply synchronous changes directly in `reduce`, and never mutate state from the view or an asynchronous closure.
+
+## SwiftUI
+
+Store the reactor with `@ViewModel`, read its state directly, and translate every interaction into an event. Call `start()` once to activate subscriptions declared in `transform()`.
 
 ```swift
-// in ViewModel:
+import Reactor
+import SwiftUI
+
+struct ItemsView: View {
+
+    @ViewModel private var viewModel = ItemsViewModel()
+
+    var body: some View {
+        List(viewModel.items) { item in
+            Button(item.name) {
+                viewModel.send(destination: .detail(item.id))
+            }
+        }
+        .overlay {
+            if viewModel.itemsFetchingState.isLoading {
+                ProgressView()
+            }
+        }
+        .task {
+            viewModel.start()
+            await viewModel.send(action: .load)
+        }
+    }
+
+}
+```
+
+Use `send(action:)` to dispatch without waiting. Use `await send(action:)` when the caller must wait for side effects tracked by that event, for example in `.refreshable` or a test.
+
+Two-way controls remain reducer-driven through `bind`:
+
+```swift
+TextField(
+    "Search",
+    text: viewModel.bind(\.query, action: ItemsViewModel.Action.didChangeQuery)
+)
+```
+
+## Asynchronous work
+
+Use `fetch` when one operation maps to a `DataFetchingState`. Use `run` when the result needs a mutation and additional reducer logic. Snapshot state before starting either operation—do not capture `state` across an `await`.
+
+```swift
+case .action(.load):
+    let itemID = state.itemID
+
+    fetch(event, \.itemFetchingState) { () throws(ItemError) in
+        return try await itemService.fetchItem(id: itemID)
+    }
+
+case .action(.didTapSave):
+    let draft = state.draft
+
+    run(event) {
+        do {
+            return .didFinishSaving(try await itemService.save(draft))
+        } catch {
+            return .didFailSaving
+        }
+    }
+
+case .mutation(.didFinishSaving(let item)):
+    state.savedItem = item
+
+case .mutation(.didFailSaving):
+    state.isShowingSaveError = true
+```
+
+`fetch` manages `.loading`, `.success`, `.failure`, and cancellation automatically. Independent operations run concurrently, so use separate fetching-state properties for independent requests.
+
+## External events
+
+Observe cross-feature or service events with Reactor publishers. Keep `transform()` free of side effects other than `subscribe` calls.
+
+```swift
 func transform() {
-    subscribe {
-        await ExternalTimer.shared.timePublisher
-    } map: {
-        Mutation.didChangeTime(seconds: $0)
+    subscribe(
+        to: { itemEventService.updatesPublisher },
+        map: { .didReceiveUpdate($0) }
+    )
+}
+```
+
+Use `PassthroughPublisher` for discrete events delivered only to active subscribers. Use `@Broadcast(replayLastValue: true)` when a new subscriber should receive the latest emitted value immediately.
+
+## Type erasure
+
+Use `AnyReactor<Action, Destination, State>` when a view should accept multiple view-model implementations with the same public contract. It forwards to the original reactor and does not copy its state.
+
+```swift
+typealias ItemsReactor = AnyReactor<
+    ItemsViewModel.Action,
+    ItemsViewModel.Destination,
+    ItemsViewModel.State
+>
+
+let viewModel: ItemsReactor = ItemsViewModel()
+    .eraseToAnyReactor()
+```
+
+## Preview stubs
+
+Use `Stub` for deterministic preview states without production dependencies or side effects. Create a fresh state for each preview.
+
+```swift
+let previewViewModel = Stub<ItemsViewModel>(
+    supplier: {
+        let state = ItemsViewModel.State()
+        state.itemsFetchingState = .success([.placeholder])
+        return state
     }
-}
-
-// in View (SwiftUI):
-var body: some View {
-    MyContentView()
-        .task { viewModel.start() }
-}
+).eraseToAnyReactor()
 ```
 
-### View (SwiftUI)
+Add a stub reducer only for small interactive preview transitions. Keep `fetch`, `run`, subscriptions, and business workflows out of preview stubs.
 
-You add the ViewModel as a property wrapper to your view:
+## Legacy support
 
-```swift
-@ViewModel var model: AnyReactor = MyViewModel().eraseToAnyReactor()
-```
+The package also exposes `LegacyReactor` for projects using the older Combine-based implementation. New code should use the `Reactor` product.
 
-`AnyReactor` does not start the wrapped reactor automatically. Start it explicitly:
+## License
 
-```swift
-.task { model.start() }
-```
-
-To access the current `State` you use:
-
-```swift
-// read-only access
-Text(model.username)
-
-// binding (refactored to a variable for better readability)
-let binding = model.bind(\.username, action: { .setUsername($0) })
-TextField("Username",  text: binding)
-```
-
-To send an event to the ViewModel you call:
-
-```swift
-model.send(action: .login(username, password))
-model.send(destination: .errorAlert)
-```
-
-### UIViewController (UIKit/Combine)
-
-From `UIViewController` (in UIKit, or any other frameworks) you can send actions to ViewModel via Combine:
-```swift
-myButton.publisher(for: .touchUpInside).map { _ in .login(username, password) }
-    .map { .action($0) }
-    .subscribe(model.eventStream)
-    .store(in: &cancellables)
-```
-
-Then use Combine to subscribe to state changes, so every time the state is changed, ViewController can be updated as well:
-```swift
-reactor.stateStream
-    .map { String($0.username) }
-    .assign(to: \.text, on: usernameLabel, ownership: .weak)
-    .store(in: &cancellables)
-```
-
-## Logging
-```swift
-struct SampleLogger: ReactorLogger {
-    
-    func logReactorEvent(_ message: Any, level: LogLevel, fileName: String, lineNumber: Int) {
-        print("[\(level)] \(message) (\(fileName):\(lineNumber))")
-    }
-    
-}
-
-ReactorConfiguration.logger = SampleLogger()
-```
-
-## Previews
-You can easily mock state for Xcode Previews by using `Stub` reactor implementation:
-```swift
-#Preview("Empty") {
-    NavigationStack {
-        HomeScreen(viewModel: Stub<HomeScreenViewModel> {
-            let state = HomeScreenViewModel.State()
-            state.items = [] // use empty array to mock empty state
-            return state
-        }.eraseToAnyReactor())
-    }
-}
-```
-
-# License
-Refactor repository is released under the MIT license. See [LICENSE](LICENSE.md) for details.
+Reactor is available under the MIT License. See [LICENSE.md](LICENSE.md).
