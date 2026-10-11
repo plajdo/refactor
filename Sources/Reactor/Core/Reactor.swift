@@ -24,7 +24,7 @@ import SwiftUI
     /// Internal events
     ///
     /// Used for actions invoked from an interaction with the UI.
-    /// See ``send(action:)-4t47e``
+    /// See ``send(action:)-8420z``
     ///
     /// Example usage:
     /// ```swift
@@ -105,7 +105,7 @@ import SwiftUI
 
     /// Initial state of the reactor
     ///
-    /// This is a separate instance from ``state-1ufdb``, created by calling
+    /// This is a separate instance from ``state``, created by calling
     /// ``makeInitialState()``.
     ///
     /// - note: Using `initialState` is discouraged and is provided only for
@@ -128,7 +128,7 @@ import SwiftUI
     /// Constructor for this reactor's initial state.
     ///
     /// This function may get called twice (once for default state, once
-    /// for ``initialState-9l2w6``). If you intend to use `initialState`, try to
+    /// for ``initialState``). If you intend to use `initialState`, try to
     /// make sure the returned state is a deep copy and has no references to shared
     /// objects to prevent further mutability.
     /// - Returns: Initial state of the reactor
@@ -136,7 +136,7 @@ import SwiftUI
 
     /// Creates subscriptions to external events, that supply mutations to this Reactor.
     ///
-    /// Call ``subscribe(to:map:)`` inside this function to create subscriptions
+    /// Call ``subscribe(to:map:)-(()->AsyncSequence<Value,Never>,_)`` inside this function to create subscriptions
     /// to data ``Publisher``-s outside of this Reactor.
     /// ```swift
     /// func transform() {
@@ -157,7 +157,7 @@ import SwiftUI
     /// You can use multiple subscriptions to multiple external events.
     ///
     /// - important: Keep this function free of side effects, except calls to
-    /// ``subscribe(to:map:)``. This function may be invoked multiple times.
+    /// ``subscribe(to:map:)-(()->AsyncSequence<Value,Never>,_)``. This function may be invoked multiple times.
     func transform()
 
     #if canImport(Combine)
@@ -182,7 +182,7 @@ import SwiftUI
     /// Switch over the `event.kind` to see the exact event received. You should
     /// handle all possible events that this reactor may receive.
     ///
-    /// To chain another action to this event, call ``run(_:_:)`` and supply
+    /// To chain another action to this event, call ``run(_:eventHandler:)`` and supply
     /// the event that required an action, as well as the action closure itself.
     ///
     /// ```swift
@@ -328,7 +328,7 @@ public extension Reactor {
     }
 
     /// Starts the Reactor - the Reactor starts listening to external events
-    /// by calling the ``transform()-7ttgl`` function. If the Reactor
+    /// by calling the ``transform()`` function. If the Reactor
     /// uses Combine, subscribes the event stream and publishes the
     /// initial state.
     func start() {
@@ -362,8 +362,8 @@ public extension Reactor {
     /// - note: You can start multiple asynchronous blocks under a single `event`. Ordering of operations is
     /// undefined and not guaranteed.
     /// - note: If you need to return multiple mutations from an asynchronous event, create a helper struct
-    /// and supply mutations using a ``Publisher`` and ``subscribe(to:map:)``
-    @available(*, noasync) func run(_ event: Event, @_implicitSelfCapture eventHandler: @autoclosure @escaping () -> @Sendable () async -> Mutation?) {
+    /// and supply mutations using a ``Publisher`` and ``subscribe(to:map:)-(()->AsyncSequence<Value,Never>,_)``)
+    @available(*, noasync) func run(_ event: Event, @_implicitSelfCapture eventHandler: @escaping @autoclosure () -> @Sendable () async -> Mutation?) {
         let semaphore = MapTables.eventLocks[key: event.id, default: AsyncSemaphore(value: 0)]
         MapTables.runningEvents[key: self, default: EventTaskCounter()].newTask(eventId: event.id)
 
@@ -396,7 +396,7 @@ public extension Reactor {
     @_spi(ReactorExperimental) @available(*, noasync) func fetch<T: Sendable, E: Error>(
         _ event: Event,
         updating data: ReferenceWritableKeyPath<State, DataFetchingState<T, E>>,
-        @_implicitSelfCapture eventHandler: @autoclosure @escaping () -> @Sendable () async throws(E) -> T
+        @_implicitSelfCapture eventHandler: @escaping @autoclosure () -> @Sendable () async throws(E) -> T
     ) {
         fetch(event, data, updating: true, eventHandler: eventHandler())
     }
@@ -435,7 +435,7 @@ public extension Reactor {
     @available(*, noasync) func fetch<T: Sendable, E: Error>(
         _ event: Event,
         _ data: ReferenceWritableKeyPath<State, DataFetchingState<T, E>>,
-        @_implicitSelfCapture eventHandler: @autoclosure @escaping () -> @Sendable () async throws(E) -> T
+        @_implicitSelfCapture eventHandler: @escaping @autoclosure () -> @Sendable () async throws(E) -> T
     ) {
         fetch(event, data, updating: false, eventHandler: eventHandler())
     }
@@ -444,7 +444,7 @@ public extension Reactor {
         _ event: Event,
         _ data: ReferenceWritableKeyPath<State, DataFetchingState<T, E>>,
         updating: Bool,
-        @_implicitSelfCapture eventHandler: @autoclosure @escaping () -> @Sendable () async throws(E) -> T
+        @_implicitSelfCapture eventHandler: @escaping @autoclosure () -> @Sendable () async throws(E) -> T
     ) {
         let semaphore = MapTables.eventLocks[key: event.id, default: AsyncSemaphore(value: 0)]
         MapTables.runningEvents[key: self, default: EventTaskCounter()].newTask(eventId: event.id)
@@ -481,7 +481,7 @@ public extension Reactor {
                 if let error = anyError as? E {
                     state[keyPath: data] = DataFetchingState<T, E>.failure(error)
                 } else {
-                    // TODO: typed handling of thrown error
+                    // TODO: typed handling of thrown error - CancellationError here?
                     state[keyPath: data] = DataFetchingState<T, E>.idle
                 }
             }
@@ -567,23 +567,21 @@ public extension Reactor {
     /// }
     /// ```
     /// - Parameters:
-    ///   - publisherProvider: Resolution of an external publisher of any type of value
+    ///   - publisher: ``Publisher`` type to subscribe to
     ///   - mapper: Map function mapping received values to this reactor's Mutations.
     ///
     /// - important: Call from the `transform` function. Remember to `start()`
     /// the reactor to properly initalize the subscriptions.
     func subscribe<Value: Sendable>(
-        to publisherProvider: @escaping @autoclosure () -> @Sendable () async -> any Publisher<Value>,
-        map mapper: @escaping @autoclosure () -> @Sendable (Value) async -> (Mutation)
+        to publisher: @escaping () async -> any Reactor::Publisher<Value>,
+        map mapper: @escaping (Value) async -> (Mutation)
     ) {
-        let publisher = publisherProvider()
         let subscription = Task { [weak self] in
             let newSubscriber = Subscriber<Value>()
             await newSubscriber.subscribe(to: publisher())
 
-            let map = mapper()
             for await value in newSubscriber {
-                let mutation = await map(value)
+                let mutation = await mapper(value)
                 let event = Event(kind: .mutation(mutation))
 
                 guard let self else { break }
@@ -591,6 +589,111 @@ public extension Reactor {
             }
 
             Self._debugLog(message: "Subscription finished")
+        }
+
+        subscription.store(in: &MapTables.subscriptions[key: self, default: []])
+    }
+
+    /// Create a new subscription to external AsyncSequence for current reactor.
+    ///
+    /// The subscription can receive values until the reactor is deallocated
+    /// or sequence finishes. For subscriptions to AsyncSequences with Failure
+    /// type see ``subscribe(to:map:failure:)``.
+    ///
+    ///
+    ///
+    /// ## Usage
+    /// ```swift
+    /// func transform() {
+    ///     subscribe {
+    ///         externalAsyncSequence
+    ///     } map: {
+    ///         .changeValue($0)
+    ///     } failure: {
+    ///         .handleFailure($0)
+    ///     }
+    /// }
+    /// ```
+    /// - Parameters:
+    ///   - sequence: `AsyncSequence` type to subscribe to
+    ///   - mapper: Map function mapping received values to this reactor's Mutations.
+    ///
+    /// - important: Call from the `transform` function. Remember to `start()`
+    /// the reactor to properly initalize the subscriptions.
+    @available(iOS 18.0, *)
+    func subscribe<Value: Sendable>(
+        to sequence: @escaping () async -> any AsyncSequence<Value, Never>,
+        map mapper: @escaping (Value) async -> (Mutation)
+    ) {
+        subscribe(to: sequence, map: mapper, failure: { (Never) async -> Mutation in })
+    }
+
+    /// Create a new subscription to external AsyncSequence for current reactor.
+    ///
+    /// The subscription can receive values until the reactor is deallocated, sequence
+    /// finishes or fails with `Failure` error.
+    ///
+    ///
+    ///
+    /// ## Usage
+    /// ```swift
+    /// func transform() {
+    ///     subscribe {
+    ///         externalAsyncSequence
+    ///     } map: {
+    ///         .changeValue($0)
+    ///     } failure: {
+    ///         .handleFailure($0)
+    ///     }
+    /// }
+    /// ```
+    /// - Parameters:
+    ///   - sequence: `AsyncSequence` type to subscribe to
+    ///   - mapper: Map function mapping received values to this reactor's Mutations.
+    ///   - errMapper: Map function mapping received failures to this reactor's Mutations.
+    ///
+    /// - important: Call from the `transform` function. Remember to `start()`
+    /// the reactor to properly initalize the subscriptions.
+    @available(iOS 18.0, *)
+    func subscribe<Value: Sendable, Failure: Error>(
+        to sequence: @escaping () async -> any AsyncSequence<Value, Failure>,
+        map mapper: @escaping (Value) async -> (Mutation),
+        failure errMapper: @escaping (Failure) async -> (Mutation)
+    ) {
+        let subscription = Task { [weak self] in
+            let resolvedSequence = await sequence()
+
+            do throws(Failure) {
+                for try await value in resolvedSequence {
+                    let mutation = await mapper(value)
+
+                    guard !Task.isCancelled else {
+                        Self._debugLog(message: "Subscription cancelled")
+                        break
+                    }
+
+                    guard let self else { break }
+
+                    let event = Event(kind: .mutation(mutation))
+                    _send(event: event)
+                }
+
+                Self._debugLog(message: "Subscription finished")
+            } catch {
+                let mutation = await errMapper(error)
+
+                guard !Task.isCancelled else {
+                    Self._debugLog(message: "Subscription cancelled")
+                    return
+                }
+
+                guard let self else { return }
+
+                let event = Event(kind: .mutation(mutation))
+                _send(event: event)
+
+                Self._debugLog(message: "Subscription finished with error")
+            }
         }
 
         subscription.store(in: &MapTables.subscriptions[key: self, default: []])

@@ -53,7 +53,7 @@ public actor Debouncer<Value: Sendable> {
 
     /// A debouncer that executes output only after a specified time has elapsed between events.
     /// - Parameters:
-    ///   - delay: How long the debouncer should wait before executing the output
+    ///   - timeInterval: How long the debouncer should wait before executing the output
     ///   - outputHandler: Handler to execute once the debouncing is done
     public init(
         delay timeInterval: DispatchTimeInterval = .never,
