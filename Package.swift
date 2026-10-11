@@ -7,7 +7,7 @@ let package = Package(
     name: "Reactor",
     platforms: [
         .iOS(.v13),
-        .macOS(.v11)
+        .macOS(.v10_15)
     ],
     products: [
         .library(

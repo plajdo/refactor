@@ -620,7 +620,7 @@ public extension Reactor {
     ///
     /// - important: Call from the `transform` function. Remember to `start()`
     /// the reactor to properly initalize the subscriptions.
-    @available(iOS 18.0, *)
+    @available(iOS 18.0, macOS 15.0, *)
     func subscribe<Value: Sendable>(
         to sequence: @escaping () async -> any AsyncSequence<Value, Never>,
         map mapper: @escaping (Value) async -> (Mutation)
@@ -654,7 +654,7 @@ public extension Reactor {
     ///
     /// - important: Call from the `transform` function. Remember to `start()`
     /// the reactor to properly initalize the subscriptions.
-    @available(iOS 18.0, *)
+    @available(iOS 18.0, macOS 15.0, *)
     func subscribe<Value: Sendable, Failure: Error>(
         to sequence: @escaping () async -> any AsyncSequence<Value, Failure>,
         map mapper: @escaping (Value) async -> (Mutation),

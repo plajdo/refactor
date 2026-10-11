@@ -5,7 +5,8 @@
 //  Created by Filip Šašala on 25/10/2024.
 //
 
-
+@available(iOS, introduced: 13.0, deprecated: 18.0)
+@available(macOS, introduced: 10.15, deprecated: 15.0)
 @propertyWrapper public final class Broadcast<Value: Sendable> {
 
     public var wrappedValue: Value {

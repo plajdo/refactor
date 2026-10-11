@@ -7,6 +7,8 @@
 
 import Foundation
 
+@available(iOS, introduced: 13.0, deprecated: 18.0)
+@available(macOS, introduced: 10.15, deprecated: 15.0)
 public actor ReplayPublisher<Value: Sendable>: Publisher {
 
     private let upstream: any Publisher<Value>

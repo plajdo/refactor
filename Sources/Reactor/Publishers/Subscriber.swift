@@ -8,6 +8,8 @@
 import Foundation
 import Collections
 
+@available(iOS, introduced: 13.0, deprecated: 18.0)
+@available(macOS, introduced: 10.15, deprecated: 15.0)
 public actor Subscriber<Value: Sendable>: AsyncSequence, AsyncIteratorProtocol {
 
     // MARK: - Typealiases

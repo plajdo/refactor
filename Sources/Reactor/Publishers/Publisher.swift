@@ -9,6 +9,8 @@ import Foundation
 
 // MARK: - Publisher protocol
 
+@available(iOS, introduced: 13.0, deprecated: 18.0)
+@available(macOS, introduced: 10.15, deprecated: 15.0)
 public protocol Publisher<Value>: Sendable {
 
     associatedtype Value: Sendable
